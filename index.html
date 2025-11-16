@@ -1,1 +1,91 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>متجر البخور - الصفحة الرئيسية</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">متجر البخور</div>
+    <nav>
+      <a class="nav-link" href="admin.html">لوحة التحكم</a>
+      <a class="nav-link" href="checkout.html">السلة (<span id="cart-count">0</span>)</a>
+    </nav>
+  </header>
 
+  <section class="hero">
+    <div class="hero-content">
+      <h1>أجود أنواع البخور والعود</h1>
+      <p>اختيارات مميزة بعناية لتعطير بيتك ومناسباتك. تصفح، أضف للسلة، وأكمل الحجز عبر واتساب.</p>
+      <a class="btn-primary" href="#products">تسوق الآن</a>
+    </div>
+    <div class="hero-image" aria-hidden></div>
+  </section>
+
+  <main class="container">
+    <h2 id="products" class="section-title">المنتجات</h2>
+    <div id="productsGrid" class="grid"></div>
+  </main>
+
+  <a class="cart-fab" href="checkout.html" title="اذهب للسلة">السلة (<span id="fab-count">0</span>)</a>
+
+  <script>
+    function getProducts(){ try{ return JSON.parse(localStorage.getItem('products')||'[]'); }catch(e){return []} }
+    function getCart(){ try{ return JSON.parse(localStorage.getItem('cart')||'{}'); }catch(e){return {}} }
+    function saveCart(cart){ localStorage.setItem('cart', JSON.stringify(cart)); updateCounts(); }
+
+    function updateCounts(){
+      const cart = getCart();
+      let count = 0; for(const id in cart) count += cart[id].qty;
+      document.getElementById('cart-count').textContent = count;
+      document.getElementById('fab-count').textContent = count;
+    }
+
+    // update counts when cart changes in other tabs/pages
+    window.addEventListener('storage', (e)=>{
+      if(e.key === 'cart') updateCounts();
+    });
+
+    // custom event to update within same tab
+    window.addEventListener('cartUpdated', ()=> updateCounts());
+
+    function renderGrid(){
+      const grid = document.getElementById('productsGrid');
+      const products = getProducts();
+      if(products.length===0){ grid.innerHTML = '<p class="empty">لم تُضَف أي منتجات بعد. افتح لوحة التحكم لإضافة البضائع.</p>'; return; }
+      grid.innerHTML = products.map((p,idx)=>{
+        return `
+          <article class="card">
+            <img class="card-img" src="${p.image||'https://via.placeholder.com/400x300?text=بخور'}" alt="${p.title}">
+            <div class="card-body">
+              <h3 class="card-title">${p.title}</h3>
+              <p class="card-desc">${p.description||''}</p>
+                <div class="card-footer">
+                <div class="price">${p.price} د.ل</div>
+                <button class="add-btn" data-id="${idx}">أضف إلى السلة</button>
+              </div>
+            </div>
+          </article>`;
+      }).join('');
+
+      grid.querySelectorAll('.add-btn').forEach(btn=> btn.addEventListener('click', ()=>{
+        const id = btn.getAttribute('data-id');
+        const products = getProducts();
+        const p = products[id];
+        const cart = getCart();
+          if(!cart[id]) cart[id] = {title: p.title, price: p.price, qty:0, image: p.image||'', description: p.description||''};
+        cart[id].qty += 1;
+        saveCart(cart);
+        alert('أضيف المنتج إلى السلة');
+      }));
+    }
+
+    // initial render
+    renderGrid();
+    updateCounts();
+  </script>
+</body>
+</html>

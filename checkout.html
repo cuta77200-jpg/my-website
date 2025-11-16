@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>تأكيد الطلب</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>تأكيد الطلب</h1>
+    <nav>
+      <a href="index.html">المتجر</a>
+      <a href="admin.html">لوحة التحكم</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>محتوى السلة</h2>
+      <div id="cartItems" class="cart-list"></div>
+      <p>المجموع: <span id="total">0</span> د.ل</p>
+      <div class="cart-actions">
+        <button id="clearCart" class="btn secondary">تفريغ السلة</button>
+        <button id="proceedWhatsApp" class="btn">تأكيد وإرسال عبر واتساب</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>معلومات العميل</h2>
+      <label>الاسم</label>
+      <input id="custName" placeholder="اسم العميل" />
+      <label>رقم الجوال</label>
+      <input id="custPhone" placeholder="مثال: 059XXXXXXXX" />
+      <button id="confirm">تأكيد الحجز وإرسال عبر واتساب</button>
+    </section>
+  </main>
+
+  <script>
+    function getCart(){ try{ return JSON.parse(localStorage.getItem('cart')||'{}'); }catch(e){return {}} }
+    function getSeller(){ return localStorage.getItem('sellerPhone')||''; }
+
+    function saveCart(cart){ localStorage.setItem('cart', JSON.stringify(cart)); window.dispatchEvent(new Event('cartUpdated')); }
+
+    function renderCart(){
+      const cart = getCart();
+      const container = document.getElementById('cartItems');
+      const items = [];
+      let total=0;
+      for(const id in cart){
+        const it = cart[id];
+        const lineTotal = (parseFloat(it.price)||0)*it.qty;
+        total += lineTotal;
+        const thumb = it.image ? `<img class="thumb" src="${it.image}" alt="${it.title}">` : `<div class="thumb"></div>`;
+        const desc = it.description ? `<div class="desc">${it.description}</div>` : '';
+        items.push(
+          `<div class="cart-item" data-id="${id}">
+            ${thumb}
+            <div class="info">
+              <div class="title">${it.title}</div>
+              ${desc}
+              <div class="meta">
+                <div class="qty-controls">
+                  <button class="decrease" data-id="${id}">-</button>
+                  <div class="qty">${it.qty}</div>
+                  <button class="increase" data-id="${id}">+</button>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <div class="line-price">${lineTotal} د.ل</div>
+                  <button class="remove-btn" data-id="${id}">حذف</button>
+                </div>
+              </div>
+            </div>
+          </div>`
+        );
+      }
+      container.innerHTML = items.length ? items.join('') : '<p class="empty">السلة فارغة.</p>';
+      document.getElementById('total').textContent = total;
+      attachCartHandlers();
+    }
+
+    function attachCartHandlers(){
+      document.querySelectorAll('.increase').forEach(b=> b.addEventListener('click', ()=>{
+        const id = b.getAttribute('data-id');
+        const cart = getCart(); if(!cart[id]) return; cart[id].qty += 1; saveCart(cart); renderCart();
+      }));
+      document.querySelectorAll('.decrease').forEach(b=> b.addEventListener('click', ()=>{
+        const id = b.getAttribute('data-id');
+        const cart = getCart(); if(!cart[id]) return; cart[id].qty -= 1; if(cart[id].qty<=0) { delete cart[id]; } saveCart(cart); renderCart();
+      }));
+      document.querySelectorAll('.remove-btn').forEach(b=> b.addEventListener('click', ()=>{
+        const id = b.getAttribute('data-id');
+        const cart = getCart(); if(!cart[id]) return; delete cart[id]; saveCart(cart); renderCart();
+      }));
+    }
+
+    // clear cart button
+    document.getElementById('clearCart').addEventListener('click', ()=>{
+      if(!confirm('هل تريد تفريغ السلة فعلاً؟')) return;
+      localStorage.removeItem('cart'); window.dispatchEvent(new Event('cartUpdated')); renderCart();
+    });
+
+    // proceed via WhatsApp (uses existing confirm button functionality)
+    document.getElementById('proceedWhatsApp').addEventListener('click', ()=>{
+      // reuse existing confirm logic below (simulate click on old confirm)
+      document.getElementById('confirm').click();
+    });
+
+    document.getElementById('confirm').addEventListener('click', ()=>{
+      const name = document.getElementById('custName').value.trim();
+      const phone = document.getElementById('custPhone').value.trim();
+      if(!name || !phone){ alert('يرجى إدخال الاسم ورقم الجوال'); return; }
+      const seller = getSeller();
+      if(!seller){ alert('لم يتم ضبط رقم واتساب المستلم. افتح لوحة التحكم وأدخل رقم المستلم.'); return; }
+
+      const cart = getCart();
+      let total=0; let lines = [];
+      for(const id in cart){ const it = cart[id]; const rowTotal = (parseFloat(it.price)||0)*it.qty; lines.push(`${it.title} x ${it.qty} = ${rowTotal} د.ل`); total += rowTotal; }
+
+      if(Object.keys(cart).length===0){ alert('السلة فارغة'); return; }
+
+      let message = `طلب جديد\n`;
+      message += `اسم العميل: ${name}\n`;
+      message += `جوال: ${phone}\n\n`;
+      message += `المنتجات:\n`;
+      message += lines.join('\n');
+      message += `\n\nالمجموع: ${total} د.ل`;
+
+      const encoded = encodeURIComponent(message);
+      const url = `https://wa.me/${seller}?text=${encoded}`;
+      window.open(url, '_blank');
+    });
+
+    renderCart();
+  </script>
+</body>
+</html>

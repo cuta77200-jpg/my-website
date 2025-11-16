@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>لوحة التحكم - المتجر</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">لوحة التحكم</div>
+    <nav>
+      <a class="nav-link" href="index.html">المتجر</a>
+      <a class="nav-link" href="checkout.html">السلة</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>معلومات المستلم</h2>
+      <label>رقم واتساب المستلم (بدون + أو مسافات). مثال للسعودية: 9665XXXXXXXX</label>
+      <input id="sellerPhone" placeholder="رقم واتساب المستلم" />
+      <button id="savePhone">حفظ الرقم</button>
+    </section>
+
+    <section class="card">
+      <h2>إضافة منتج بخور جديد</h2>
+      <label>العنوان</label>
+      <input id="title" placeholder="مثال: بخور عود ملكي" />
+      <label>الوصف (اختياري)</label>
+      <textarea id="description" rows="4" placeholder="وصف مختصر للمنتج"></textarea>
+      <label>السعر (د.ل)</label>
+      <input id="price" placeholder="مثال: 45" />
+      <label>رابط صورة (اختياري)</label>
+      <input id="image" placeholder="https://example.com/image.jpg" />
+      <label>أو اختر صورة من جهازك</label>
+      <input id="imageFile" type="file" accept="image/*" />
+      <button id="addProduct">أضف المنتج</button>
+    </section>
+
+    <section class="card">
+      <h2>المنتجات الحالية</h2>
+      <div id="productList"></div>
+    </section>
+  </main>
+
+  <script>
+    function getProducts(){ try{ return JSON.parse(localStorage.getItem('products')||'[]'); }catch(e){return []} }
+    function saveProducts(arr){ localStorage.setItem('products', JSON.stringify(arr)); }
+
+    function renderList(){
+      const list = document.getElementById('productList');
+      const products = getProducts();
+      if(products.length===0) { list.innerHTML = '<p class="empty">لا توجد منتجات بعد.</p>'; return; }
+      list.innerHTML = products.map((p,idx)=>{
+          return `<div class="admin-product"><img src="${p.image||'https://via.placeholder.com/120x90?text=بخور'}" alt=""><div><strong>${p.title}</strong><div class="small">${p.description||''}</div><div>${p.price} د.ل</div></div><div><button data-del="${idx}">حذف</button></div></div>`;
+      }).join('');
+      list.querySelectorAll('button[data-del]').forEach(b=> b.addEventListener('click', ()=>{
+        const idx = b.getAttribute('data-del');
+        const products = getProducts(); products.splice(idx,1); saveProducts(products); renderList();
+      }));
+    }
+
+    document.getElementById('addProduct').addEventListener('click', ()=>{
+      const title = document.getElementById('title').value.trim();
+      const description = document.getElementById('description').value.trim();
+      const price = document.getElementById('price').value.trim();
+      const imageUrl = document.getElementById('image').value.trim();
+      const imageFileInput = document.getElementById('imageFile');
+      if(!title || !price){ alert('الرجاء إدخال العنوان والسعر'); return; }
+
+      const products = getProducts();
+      function pushProduct(img){
+        products.push({title, description, price, image: img});
+        saveProducts(products);
+        renderList();
+        // clear fields
+        document.getElementById('title').value='';
+        document.getElementById('description').value='';
+        document.getElementById('price').value='';
+        document.getElementById('image').value='';
+        if(imageFileInput) imageFileInput.value = '';
+      }
+
+      // if a local file is selected, read as data URL and store that
+      if(imageFileInput && imageFileInput.files && imageFileInput.files[0]){
+        const file = imageFileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e){
+          pushProduct(e.target.result);
+        };
+        reader.onerror = function(){ alert('حدث خطأ أثناء قراءة الصورة'); };
+        reader.readAsDataURL(file);
+      } else {
+        // fallback to URL input (may be empty)
+        pushProduct(imageUrl || '');
+      }
+    });
+
+    // seller phone
+    const phoneInput = document.getElementById('sellerPhone');
+    phoneInput.value = localStorage.getItem('sellerPhone')||'';
+    document.getElementById('savePhone').addEventListener('click', ()=>{
+      const v = phoneInput.value.trim().replace(/[^0-9]/g,'');
+      if(!v){ alert('ادخل رقم صالح بدون + أو مسافات'); return; }
+      localStorage.setItem('sellerPhone', v); alert('تم حفظ الرقم');
+    });
+
+    renderList();
+  </script>
+</body>
+</html>
